@@ -4,59 +4,59 @@ var Logic = {
     // 传参 
     // arguments.length == 2时  arguments[0] instanceOf Object,arguments[0] instanceOf Object
     // arguments.length == 3  
-    set: function(){
-      var arg = arguments,len=arguments.length
-      time = arg[len-1]
-      if(!time || isNaN(time)){time=0;}
+    set: function () {
+      var arg = arguments, len = arguments.length
+      time = arg[len - 1]
+      if (!time || isNaN(time)) { time = 0; }
       // 有效时间为时间戳
-      var key,val,effectiveTime = Date.now() + time*24*60*60
-      if(len==2){
+      var key, val, effectiveTime = Date.now() + time * 24 * 60 * 60
+      if (len == 2) {
         var obj = arg[0]
-        for(key in obj){
+        for (key in obj) {
           val = obj[key]
           localStorage[key] = JSON.stringify({
             val: val,
             time: effectiveTime
           })
         }
-      }else if(len==3){
-        key = arg[0],val=arg[1]
+      } else if (len == 3) {
+        key = arg[0], val = arg[1]
         localStorage[key] = JSON.stringify({
           val: val,
           time: effectiveTime
         })
-      }else{
+      } else {
         return false
       }
     },
-    get: function(key){
-      try{
-        if(!localStorage){return false;}
+    get: function (key) {
+      try {
+        if (!localStorage) { return false; }
         var cacheVal = localStorage.getItem(key);
         var result = JSON.parse(cacheVal);
         var now = Date().now()
-        if(!result){return null;}//缓存不存在
-        if(now>result.time){//缓存过期
+        if (!result) { return null; }//缓存不存在
+        if (now > result.time) {//缓存过期
           this.remove(key);
           return "";
         }
         return result.val;
-      }catch(e){
+      } catch (e) {
         this.remove(key);
         return null;
       }
     },
-    remove: function(key){
-      if(!localStorage){return false;}
-		  localStorage.removeItem(key);
+    remove: function (key) {
+      if (!localStorage) { return false; }
+      localStorage.removeItem(key);
     },
-    clear: function(){
-      if(!localStorage){return false;}
-		  localStorage.clear();
+    clear: function () {
+      if (!localStorage) { return false; }
+      localStorage.clear();
     }
   },
   // 深度复制
-  deepcopy (source) {
+  deepcopy(source) {
     if (!source) {
       return source;
     }
@@ -66,20 +66,196 @@ var Logic = {
     }
     return sourceCopy;
   },
-  isNullObject(obj){
-    if(obj instanceof Array){
-      return !!obj.length
-    }else if (obj instanceof Object) {
-      for(var key in obj) {
-        return false;
+  // JQ isPlainObject
+  isPlainObject: function( obj ) {
+		var proto, Ctor;
+
+		// Detect obvious negatives
+		// Use toString instead of jQuery.type to catch host objects
+		if ( !obj || toString.call( obj ) !== "[object Object]" ) {
+			return false;
+		}
+
+		proto = getProto( obj );
+
+		// Objects with no prototype (e.g., `Object.create( null )`) are plain
+		if ( !proto ) {
+			return true;
+		}
+
+		// Objects with prototype are plain iff they were constructed by a global Object function
+		Ctor = hasOwn.call( proto, "constructor" ) && proto.constructor;
+		return typeof Ctor === "function" && fnToString.call( Ctor ) === ObjectFunctionString;
+	},
+  // JQ extend
+  extend: function () {
+    var options, name, src, copy, copyIsArray, clone,
+      target = arguments[0] || {},
+      i = 1,
+      length = arguments.length,
+      deep = false;
+
+    // Handle a deep copy situation
+    if (typeof target === "boolean") {
+      deep = target;
+
+      // Skip the boolean and the target
+      target = arguments[i] || {};
+      i++;
+    }
+
+    // Handle case when target is a string or something (possible in deep copy)
+    if (typeof target !== "object" && !jQuery.isFunction(target)) {
+      target = {};
+    }
+
+    // Extend jQuery itself if only one argument is passed
+    if (i === length) {
+      target = this;
+      i--;
+    }
+
+    for (; i < length; i++) {
+
+      // Only deal with non-null/undefined values
+      if ((options = arguments[i]) != null) {
+
+        // Extend the base object
+        for (name in options) {
+          src = target[name];
+          copy = options[name];
+
+          // Prevent never-ending loop
+          if (target === copy) {
+            continue;
+          }
+
+          // Recurse if we're merging plain objects or arrays
+          if (deep && copy && (this.isPlainObject(copy) ||
+            (copyIsArray = Array.isArray(copy)))) {
+
+            if (copyIsArray) {
+              copyIsArray = false;
+              clone = src && Array.isArray(src) ? src : [];
+
+            } else {
+              clone = src && this.isPlainObject(src) ? src : {};
+            }
+
+            // Never move original objects, clone them
+            target[name] = this.extend(deep, clone, copy);
+
+            // Don't bring in undefined values
+          } else if (copy !== undefined) {
+            target[name] = copy;
+          }
+        }
       }
-      return true;
+    }
+
+    // Return the modified object
+    return target;
+  },
+  isNullObj: function (obj) {
+    if(typeof obj != 'object') return false
+    if(typeof obj.length == 'undefined'){
+      for(var key in obj){
+        return false
+      }
+      return true
     }else{
-      throw new Error('arguments type need Object!')
+      return obj.length == 0 ? true : false
     }
   },
   isUrl: function (string) {
     var regexp = /^(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/;
     return regexp.test(string);
+  },
+  // 除去数组中字符串元素的首尾空格
+  trimArray (arr) {
+    var ret = this.deepcopy(arr)
+    if(ret instanceof Array){
+      var _ret = [],i,len=ret.length,item
+      for(i=0; i<len; i++){
+        item = ret[i]
+        if(item instanceof String){
+          _ret.push(item.trim())
+        }else{
+          _ret.push(item)
+        }
+      }
+      ret = _ret
+    }
+    return ret
+  },
+  // 前置扩展某方法
+  prependFn: function (fn, prevfn) {
+    return function () {
+      prevfn.apply(this, arguments)
+      return fn.apply(this, arguments)
+    }
+  },
+  // 后置扩展某方法
+  appendFn: function (fn, nextfn) {
+    return function () {
+      fn.apply(this, arguments)
+      return nextfn.apply(this, arguments)
+    }
+  },
+  // 复制字符串
+  str_repeat: function (str, num) {
+    return new Array(num + 1).join(str);
+  },
+  // 时间戳转时间
+  timestampToTime(timestamp) {
+    if(typeof timestamp == 'string'){
+      return timestamp
+    }
+    var timeStr = '' + timestamp;
+    var myTimestamp = timeStr.length == 10 ? timestamp*1000 : timestamp;
+    var date = new Date(myTimestamp);//时间戳为10位需*1000，时间戳为13位的话不需乘1000
+    var Y = date.getFullYear() + '-';
+    var M = (date.getMonth()+1 < 10 ? '0'+(date.getMonth()+1) : date.getMonth()+1) + '-';
+    var D = (date.getDate()<10 ? '0'+date.getDate() : date.getDate()) + ' ';
+    var h = (date.getHours()<10 ? '0'+date.getHours() : date.getHours()) + ':';
+    var m = (date.getMinutes()<10 ? '0'+date.getMinutes() : date.getMinutes()) + ':';
+    var s = (date.getSeconds()<10 ? '0'+date.getSeconds() : date.getSeconds());
+    return Y+M+D+h+m+s;
+  },
+  // base64转文件
+  dataURLtoFile: function (dataurl, filename) {
+    var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+      bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+    while(n--){
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, {type:mime});
+  },
+  // base64转blob数据
+  dataURLtoBlob: function (dataurl) {
+    var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+      bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+    while(n--){
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], {type:mime});
+  },
+  // 时间格式化
+  dateFormat: function (fmt, date){ 
+    var o = {   
+      "M+" : date.getMonth()+1,                 //月份   
+      "d+" : date.getDate(),                    //日   
+      "H+" : date.getHours(),                   //小时   
+      "m+" : date.getMinutes(),                 //分   
+      "s+" : date.getSeconds(),                 //秒   
+      "q+" : Math.floor((date.getMonth()+3)/3), //季度   
+      "S"  : date.getMilliseconds()             //毫秒   
+    };   
+    if(/(y+)/.test(fmt))   
+      fmt=fmt.replace(RegExp.$1, (date.getFullYear()+"").substr(4 - RegExp.$1.length));   
+    for(var k in o)   
+      if(new RegExp("("+ k +")").test(fmt))   
+    fmt = fmt.replace(RegExp.$1, (RegExp.$1.length==1) ? (o[k]) : (("00"+ o[k]).substr((""+ o[k]).length)));   
+    return fmt;   
   }
 }
