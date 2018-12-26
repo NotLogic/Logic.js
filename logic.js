@@ -56,7 +56,7 @@ var Logic = {
     }
   },
   // 深度复制
-  deepcopy(source) {
+  deepcopy: function(source) {
     if (!source) {
       return source;
     }
@@ -76,15 +76,18 @@ var Logic = {
 			return false;
 		}
 
-		proto = getProto( obj );
+		proto = Object.getPrototypeOf( obj );
 
 		// Objects with no prototype (e.g., `Object.create( null )`) are plain
 		if ( !proto ) {
 			return true;
 		}
-
+    var class2type = {};
+    var hasOwn = class2type.hasOwnProperty;
+    var fnToString = hasOwn.toString;
+    var ObjectFunctionString = fnToString.call( Object );
 		// Objects with prototype are plain iff they were constructed by a global Object function
-		Ctor = hasOwn.call( proto, "constructor" ) && proto.constructor;
+		Ctor = class2type.hasOwnProperty.call( proto, "constructor" ) && proto.constructor;
 		return typeof Ctor === "function" && fnToString.call( Ctor ) === ObjectFunctionString;
 	},
   // JQ extend
@@ -105,7 +108,7 @@ var Logic = {
     }
 
     // Handle case when target is a string or something (possible in deep copy)
-    if (typeof target !== "object" && !jQuery.isFunction(target)) {
+    if (typeof target !== "object" && !this.isFunction(target)) {
       target = {};
     }
 
@@ -156,6 +159,19 @@ var Logic = {
     // Return the modified object
     return target;
   },
+  isFunction: function(obj){
+    return this.type( obj ) === "function";
+  },
+  type: function( obj ) {
+		if ( obj == null ) {
+			return obj + "";
+		}
+    var class2type = {};
+		// Support: Android <=2.3 only (functionish RegExp)
+		return typeof obj === "object" || typeof obj === "function" ?
+			class2type[ toString.call( obj ) ] || "object" :
+			typeof obj;
+	},
   isNullObj: function (obj) {
     if(typeof obj != 'object') return false
     if(typeof obj.length == 'undefined'){
@@ -172,13 +188,13 @@ var Logic = {
     return regexp.test(string);
   },
   // 除去数组中字符串元素的首尾空格
-  trimArray (arr) {
+  trimArray: function (arr) {
     var ret = this.deepcopy(arr)
     if(ret instanceof Array){
       var _ret = [],i,len=ret.length,item
       for(i=0; i<len; i++){
         item = ret[i]
-        if(item instanceof String){
+        if(typeof item === 'string'){
           _ret.push(item.trim())
         }else{
           _ret.push(item)
@@ -257,5 +273,96 @@ var Logic = {
       if(new RegExp("("+ k +")").test(fmt))   
     fmt = fmt.replace(RegExp.$1, (RegExp.$1.length==1) ? (o[k]) : (("00"+ o[k]).substr((""+ o[k]).length)));   
     return fmt;   
+  },
+  // 评论时间
+  commentTime: function(date){
+    var oldTime = new Date().getTime();
+    if(typeof date === 'string'){
+      oldTime = new Date(date).getTime();
+    }else if(date instanceof Object){
+      oldTime = date.getTime();
+    }else if(typeof(date) == 'number'){
+      var _date = '' + date
+      oldTime = _date.length == 10 ? _date * 1000 : Number(_date)      
+    }
+    var now = new Date().getTime(),
+    difference = now - oldTime,
+    result='',
+    minute = 1000 * 60,
+    hour = minute * 60,
+    day = hour * 24,
+    halfamonth = day * 15,
+    month = day * 30,
+    year = month * 12,
+    _year = difference/year,
+    _month =difference/month,
+    _week =difference/(7*day),
+    _day =difference/day,
+    _hour =difference/hour,
+    _min =difference/minute;
+
+    if(_year>=1) {
+      result= "发表于 " + ~~(_year) + " 年前"
+    }else if(_month>=1) {
+      result= "发表于 " + ~~(_month) + " 个月前"
+    }else if(_week>=1) {
+      result= "发表于 " + ~~(_week) + " 周前"
+    }else if(_day>=1) {
+      result= "发表于 " + ~~(_day) +" 天前"
+    }else if(_hour>=1) {
+      result= "发表于 " + ~~(_hour) +" 个小时前"
+    }else if(_min>=1) {
+      result= "发表于 " + ~~(_min) +" 分钟前"
+    } else {
+      result="刚刚";
+    }
+    return result;
+  },
+  // 检查是不是IE浏览器，如果传版本的话判断是否高于此版本 版本为整数版本5，7，8，9，10，11
+  checkIEVersion: function(version){
+    // var navigatorAppVersion = {
+    //   ie5     : "4.0 (compatible; MSIE 7.0;   Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; InfoPath.3; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)",
+    //   ie7     : "4.0 (compatible; MSIE 7.0;   Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; InfoPath.3; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)",
+    //   ie8     : "4.0 (compatible; MSIE 8.0;   Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; InfoPath.3; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)",
+    //   ie9     : "5.0 (compatible; MSIE 9.0;   Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; InfoPath.3; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)",
+    //   ie10    : "5.0 (compatible; MSIE 10.0;  Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; InfoPath.3; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)",
+    //   ie11    : "5.0 (                        Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; InfoPath.3; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729; rv:11.0) like Gecko",
+    //   chrome  : "5.0 (Windows NT 10.0; WOW64)       AppleWebKit/537.36    (KHTML, like Gecko) Chrome/70.0.3538.110  Safari/537.36",
+    //   firefox : "5.0 (Windows)",
+    //   edge    : "5.0 (Windows NT 10.0; Win64; x64)  AppleWebKit/537.36    (KHTML, like Gecko) Chrome/64.0.3282.140  Safari/537.36     Edge/17.17134",
+    //   opera   : "5.0 (Windows NT 10.0; Win64; x64)  AppleWebKit/537.36    (KHTML, like Gecko) Chrome/69.0.3497.100  Safari/537.36     OPR/56.0.3051.116",
+    //   safari  : "5.0 (Windows NT 6.2; WOW64)        AppleWebKit/534.57.2  (KHTML, like Gecko) Version/5.1.7         Safari/534.57.2",
+    //   360     : "5.0 (Windows NT 10.0; WOW64)       AppleWebKit/537.36    (KHTML, like Gecko) Chrome/63.0.3239.132  Safari/537.36",
+    // }
+    // var navigatorUserAgent = {
+    //   ie5     : "Mozilla/4.0 (compatible; MSIE 7.0;   Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; InfoPath.3; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)",
+    //   ie7     : "Mozilla/4.0 (compatible; MSIE 7.0;   Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; InfoPath.3; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)",
+    //   ie8     : "Mozilla/4.0 (compatible; MSIE 8.0;   Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; InfoPath.3; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)",
+    //   ie9     : "Mozilla/5.0 (compatible; MSIE 9.0;   Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; InfoPath.3; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)",
+    //   ie10    : "Mozilla/5.0 (compatible; MSIE 10.0;  Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; InfoPath.3; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)",
+    //   ie11    : "Mozilla/5.0 (                        Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; InfoPath.3; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729; rv:11.0) like Gecko",
+    //   chrome  : "Mozilla/5.0 (Windows NT 10.0; WOW64)               AppleWebKit/537.36    (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36",
+    //   firefox : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0",
+    //   edge    : "Mozilla/5.0 (Windows NT 10.0; Win64; x64)          AppleWebKit/537.36    (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/17.17134",
+    //   opera   : "Mozilla/5.0 (Windows NT 10.0; Win64; x64)          AppleWebKit/537.36    (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36 OPR/56.0.3051.116",
+    //   safari  : "Mozilla/5.0 (Windows NT 6.2; WOW64)                AppleWebKit/534.57.2  (KHTML, like Gecko) Version/5.1.7 Safari/534.57.2",
+    //   360     : "Mozilla/5.0 (Windows NT 10.0; WOW64)               AppleWebKit/537.36    (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36"
+    // }
+    var ret = false
+    var userAgent = window.navigator.userAgent.toUpperCase()
+    if(userAgent.indexOf('MSIE') > -1){
+      if(typeof(version) == 'number'){
+        var arr = userAgent.split(';')
+        for(var i=0;i<arr.length;i++){
+          if(arr[i].indexOf('MSIE') > -1){
+            var _version = parseInt(arr[i].split('MSIE')[1])
+            ret = !!(_version > version)
+          }
+        }
+      }else{
+        ret = true
+      }
+    }
+    return ret
   }
 }
