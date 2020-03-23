@@ -364,5 +364,11 @@ var Logic = {
       }
     }
     return ret
+  },
+  // 获取路径中指定的查询参数
+  getParams(name) {
+    var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)', 'i')
+    var r = window.location.search.substr(1).match(reg)
+    return decodeURIComponent(r[2]) || ''
   }
 }
